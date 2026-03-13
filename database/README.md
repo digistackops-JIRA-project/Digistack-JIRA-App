@@ -93,6 +93,7 @@ mysql -h <DB-Prvate-IP> -udbadmin -pAdmin@123 < initdb.sql
 ```
 
 ## RUN the flyway Migration
+Create EC2 Instance for Run the Migrations {These is DB team Task}
 #### Install flyway Tool
 ```
 cd /app
@@ -138,7 +139,7 @@ export DB_PASSWORD="P@55Word"
 
 #### Run the flyway migration command
 ```
-flyway -configFiles=flyway.conf migrate
+sudo -E flyway -configFiles=flyway.conf migrate
 ```
 
 
