@@ -93,6 +93,39 @@ mysql -h <DB-Prvate-IP> -udbadmin -pAdmin@123 < initdb.sql
 ```
 
 ## RUN the flyway Migration
+#### Install flyway Tool
+```
+cd /app
+```
+
+get latest version
+```
+LATEST=$(curl -s https://api.github.com/repos/flyway/flyway/releases/latest | grep tag_name | cut -d '"' -f4)
+```
+Remove the flyway- prefix:
+```
+VERSION=${LATEST#flyway-}
+```
+Download the flyway
+```
+sudo wget https://github.com/flyway/flyway/releases/download/$LATEST/flyway-commandline-$VERSION-linux-x64.tar.gz
+```
+Extract the flyway
+```
+sudo tar -xzf flyway-commandline-$VERSION-linux-x64.tar.gz
+```
+move to /opt
+```
+sudo mv flyway-$VERSION /opt/flyway
+```
+Add to path
+```
+sudo ln -sf /opt/flyway/flyway /usr/local/bin/flyway
+```
+Check flyway version
+```
+flyway -v
+```
 #### Export DB Credentials as Environment Variables for DB Connection
 
 ```
@@ -107,6 +140,8 @@ export DB_PASSWORD="P@55Word"
 ```
 flyway -configFiles=flyway.conf migrate
 ```
+
+
 # Step:3 ==> Check data saved in DB or Not
 
 Login to your MYSQL
