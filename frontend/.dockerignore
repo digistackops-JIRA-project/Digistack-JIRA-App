@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output (rebuilt inside Docker)
+dist/
+
+# Tests (not needed in image)
+tests/
+coverage/
+
+# Dev config
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Vite cache
+.vite/

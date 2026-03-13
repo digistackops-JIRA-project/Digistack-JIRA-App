@@ -1,0 +1,87 @@
+version: "3.9"
+
+# ============================================================================
+# SapSecOps Admin Portal — Local Development Stack
+# Usage: docker-compose up -d
+# ============================================================================
+
+services:
+
+  # ── MySQL DB ──────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: admindb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE:      admindb
+      MYSQL_USER:          adminuser
+      MYSQL_PASSWORD:      adminpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "adminuser", "-padminpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Flyway Migrations ─────────────────────────────────────────────────────
+  flyway:
+    image: flyway/flyway:10
+    container_name: flyway_migrate
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./database/migrations:/flyway/sql
+    command: >
+      -url=jdbc:mysql://mysql:3306/admindb?useSSL=false&allowPublicKeyRetrieval=true
+      -user=adminuser
+      -password=adminpass
+      -baselineOnMigrate=true
+      migrate
+
+  # ── Backend ───────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    container_name: admin-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST:     mysql
+      DB_PORT:     3306
+      DB_USER:     adminuser
+      DB_PASSWORD: adminpass
+      DB_NAME:     admindb
+      SECRET_KEY:  dev-secret-change-in-prod
+      APP_ENV:     development
+      CORS_ORIGINS: http://localhost:5173,http://localhost:80
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health/live || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Frontend ──────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+    container_name: admin-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_BASE_URL: ""   # Nginx proxies /api → backend
+
+volumes:
+  mysql_data:

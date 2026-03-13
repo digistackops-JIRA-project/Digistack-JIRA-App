@@ -1,0 +1,10 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', system-ui, sans-serif; background: #f0f4f8; color: #1e293b; }
+:root {
+  --primary: #4f46e5; --primary-dark: #4338ca;
+  --success: #16a34a; --danger: #dc2626; --warning: #d97706;
+  --surface: #ffffff; --border: #e2e8f0; --text-muted: #64748b;
+  --radius: 8px; --shadow: 0 1px 3px rgba(0,0,0,.1);
+}
+a { color: var(--primary); text-decoration: none; }
+button { cursor: pointer; font: inherit; }

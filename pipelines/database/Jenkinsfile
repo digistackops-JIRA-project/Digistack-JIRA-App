@@ -1,0 +1,92 @@
+// ============================================================================
+// DB Team Pipeline — Jenkinsfile
+// Runs Flyway migrations across Dev → Staging → Prod
+// ============================================================================
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'DEPLOY_ENV', choices: ['dev', 'staging', 'prod'], description: 'Target environment')
+    }
+
+    environment {
+        FLYWAY_IMAGE = 'flyway/flyway:10'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        stage('Validate SQL') {
+            steps {
+                sh '''
+                    echo "== Linting SQL migration files =="
+                    for f in database/migrations/V*.sql; do
+                        echo "Checking: $f"
+                        # Fail if file is empty
+                        [ -s "$f" ] || (echo "EMPTY FILE: $f" && exit 1)
+                    done
+                    echo "All SQL files look valid."
+                '''
+            }
+        }
+
+        stage('Flyway Info (dry-run)') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: "db-${params.DEPLOY_ENV}", usernameVariable: 'DB_USER', passwordVariable: 'DB_PASSWORD')]) {
+                    sh """
+                        docker run --rm \\
+                            -v \$(pwd)/database/migrations:/flyway/sql \\
+                            -e FLYWAY_URL=jdbc:mysql://\${DB_HOST}:3306/admindb \\
+                            -e FLYWAY_USER=\${DB_USER} \\
+                            -e FLYWAY_PASSWORD=\${DB_PASSWORD} \\
+                            ${FLYWAY_IMAGE} info
+                    """
+                }
+            }
+        }
+
+        stage('Approval — Prod') {
+            when { expression { params.DEPLOY_ENV == 'prod' } }
+            steps {
+                input message: "⚠️  Apply DB migrations to PRODUCTION?", ok: "Yes, migrate"
+            }
+        }
+
+        stage('Flyway Migrate') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: "db-${params.DEPLOY_ENV}", usernameVariable: 'DB_USER', passwordVariable: 'DB_PASSWORD')]) {
+                    sh """
+                        docker run --rm \\
+                            -v \$(pwd)/database/migrations:/flyway/sql \\
+                            -e FLYWAY_URL=jdbc:mysql://\${DB_HOST_${params.DEPLOY_ENV.toUpperCase()}}:3306/admindb \\
+                            -e FLYWAY_USER=\${DB_USER} \\
+                            -e FLYWAY_PASSWORD=\${DB_PASSWORD} \\
+                            ${FLYWAY_IMAGE} migrate
+                    """
+                }
+            }
+        }
+
+        stage('Flyway Validate') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: "db-${params.DEPLOY_ENV}", usernameVariable: 'DB_USER', passwordVariable: 'DB_PASSWORD')]) {
+                    sh """
+                        docker run --rm \\
+                            -v \$(pwd)/database/migrations:/flyway/sql \\
+                            -e FLYWAY_URL=jdbc:mysql://\${DB_HOST_${params.DEPLOY_ENV.toUpperCase()}}:3306/admindb \\
+                            -e FLYWAY_USER=\${DB_USER} \\
+                            -e FLYWAY_PASSWORD=\${DB_PASSWORD} \\
+                            ${FLYWAY_IMAGE} validate
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success { echo "✅ DB migration succeeded on ${params.DEPLOY_ENV}" }
+        failure { echo "❌ DB migration FAILED on ${params.DEPLOY_ENV}" }
+    }
+}

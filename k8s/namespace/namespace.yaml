@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sapsecops
+  labels:
+    app.kubernetes.io/part-of: sapsecops-ticketing
+    environment: production

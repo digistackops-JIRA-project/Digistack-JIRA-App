@@ -1,0 +1,207 @@
+// ============================================================================
+// Backend Team Pipeline — Jenkinsfile
+// Python FastAPI — test → build Docker image → deploy Dev → Staging → Prod
+// ============================================================================
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME   = 'sapsecops/admin-backend'
+        IMAGE_TAG    = "${BUILD_NUMBER}-${GIT_COMMIT[0..6]}"
+        REGISTRY     = 'registry.sapsecops.in'
+    }
+
+    stages {
+        stage('Checkout') { steps { checkout scm } }
+
+        // ── Unit + Integration Tests ──────────────────────────────────────────
+        stage('Test') {
+            agent { docker { image 'python:3.11-slim'; args '-u root' } }
+            steps {
+                dir('backend') {
+                    sh '''
+                        pip install -q -r requirements.txt
+                        pytest tests/ \
+                            --cov=app \
+                            --cov-report=xml:coverage.xml \
+                            --cov-report=term-missing \
+                            --junitxml=test-results.xml \
+                            -v
+                    '''
+                }
+            }
+            post {
+                always {
+                    junit      'backend/test-results.xml'
+                    cobertura  coberturaReportFile: 'backend/coverage.xml'
+                }
+            }
+        }
+
+        // ── Lint ──────────────────────────────────────────────────────────────
+        stage('Lint') {
+            agent { docker { image 'python:3.11-slim'; args '-u root' } }
+            steps {
+                dir('backend') {
+                    sh '''
+                        pip install -q flake8
+                        flake8 app/ --max-line-length=120 --ignore=E501,W503
+                    '''
+                }
+            }
+        }
+
+        // ── Build Docker Image ────────────────────────────────────────────────
+        stage('Build Image') {
+            steps {
+                dir('backend') {
+                    sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} ."
+                    sh "docker tag  ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} ${REGISTRY}/${IMAGE_NAME}:latest"
+                }
+            }
+        }
+
+        // ── Push to Registry ──────────────────────────────────────────────────
+        stage('Push Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-registry', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
+                    sh "echo \$REG_PASS | docker login ${REGISTRY} -u \$REG_USER --password-stdin"
+                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:latest"
+                }
+            }
+        }
+
+        // ── Deploy Dev ────────────────────────────────────────────────────────
+        stage('Deploy → Dev') {
+            steps {
+                sshagent(['ssh-dev-server']) {
+                    sh """
+                        ssh deploy@${DEV_HOST} '
+                            docker pull ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                            docker stop admin-backend || true
+                            docker rm   admin-backend || true
+                            docker run -d --name admin-backend \
+                                --restart always \
+                                -p 8000:8000 \
+                                --env-file /etc/sapsecops/admin-backend.dev.env \
+                                ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                        '
+                    """
+                }
+            }
+        }
+
+        // ── Health Check Dev ──────────────────────────────────────────────────
+        stage('Health Check — Dev') {
+            steps {
+                sh '''
+                    sleep 8
+                    STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${DEV_HOST}:8000/health/ready)
+                    [ "$STATUS" = "200" ] || (echo "Health check failed: $STATUS" && exit 1)
+                    echo "Dev health check passed ✅"
+                '''
+            }
+        }
+
+        // ── API Smoke Tests on Dev ────────────────────────────────────────────
+        stage('API Smoke Test — Dev') {
+            steps {
+                sh '''
+                    BASE=http://${DEV_HOST}:8000
+                    curl -sf ${BASE}/health         > /dev/null && echo "/health OK"
+                    curl -sf ${BASE}/health/live     > /dev/null && echo "/health/live OK"
+                    curl -sf ${BASE}/health/ready    > /dev/null && echo "/health/ready OK"
+                    TOKEN=$(curl -sf -X POST ${BASE}/api/v1/auth/login \
+                        -H "Content-Type: application/json" \
+                        -d "{\\"email\\":\\"admin@sapsecops.in\\",\\"password\\":\\"Admin123\\"}" \
+                        | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+                    [ -n "$TOKEN" ] && echo "Login smoke test OK" || (echo "Login FAILED" && exit 1)
+                '''
+            }
+        }
+
+        // ── Approval before Staging ───────────────────────────────────────────
+        stage('Approval → Staging') {
+            steps {
+                input message: "Deploy ${IMAGE_TAG} to STAGING?", ok: "Deploy"
+            }
+        }
+
+        stage('Deploy → Staging') {
+            steps {
+                sshagent(['ssh-staging-server']) {
+                    sh """
+                        ssh deploy@${STAGING_HOST} '
+                            docker pull ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                            docker stop admin-backend || true
+                            docker rm   admin-backend || true
+                            docker run -d --name admin-backend \
+                                --restart always \
+                                -p 8000:8000 \
+                                --env-file /etc/sapsecops/admin-backend.staging.env \
+                                ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                        '
+                    """
+                }
+            }
+        }
+
+        stage('Health Check — Staging') {
+            steps {
+                sh '''
+                    sleep 8
+                    STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${STAGING_HOST}:8000/health/ready)
+                    [ "$STATUS" = "200" ] || (echo "Health check failed" && exit 1)
+                    echo "Staging health check passed ✅"
+                '''
+            }
+        }
+
+        // ── Approval before Production ────────────────────────────────────────
+        stage('Approval → Prod') {
+            steps {
+                input message: "⚠️  Deploy ${IMAGE_TAG} to PRODUCTION?", ok: "Yes, deploy to PROD"
+            }
+        }
+
+        stage('Deploy → Prod') {
+            steps {
+                sshagent(['ssh-prod-server']) {
+                    sh """
+                        ssh deploy@${PROD_HOST} '
+                            docker pull ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                            docker stop admin-backend || true
+                            docker rm   admin-backend || true
+                            docker run -d --name admin-backend \
+                                --restart always \
+                                -p 8000:8000 \
+                                --env-file /etc/sapsecops/admin-backend.prod.env \
+                                ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                        '
+                    """
+                }
+            }
+        }
+
+        stage('Health Check — Prod') {
+            steps {
+                sh '''
+                    sleep 10
+                    STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${PROD_HOST}:8000/health/ready)
+                    [ "$STATUS" = "200" ] || (echo "PROD Health check FAILED — rollback manually!" && exit 1)
+                    echo "Production health check passed ✅"
+                '''
+            }
+        }
+    }
+
+    post {
+        success { echo "✅ Backend pipeline succeeded — ${IMAGE_TAG} deployed" }
+        failure {
+            echo "❌ Backend pipeline FAILED"
+            // TODO: notify Slack / Teams
+        }
+        always  { sh 'docker logout ${REGISTRY} || true' }
+    }
+}
