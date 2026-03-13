@@ -96,25 +96,36 @@ flyway -configFiles=flyway.conf migrate
 ```
 
 # Step:5 ==> Download the Dependencies
-Go to the Backen directory 
+#### Go to the Backen directory 
 ```
 cd /app/Digistack-JIRA-App/backend
 ````
-Install Dependencies
+#### Install Dependencies
 ```
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
-Start Backend Application
+#### Install the "gunicorn" for running HA
 ```
 pip install gunicorn
 ```
-To run these Backend Application up and Running we use Linux service
+#### Run the Test cases
+```
+pytest tests/ -v
+```
+#### Run the Test acses with coverage
+
+it will create the folder "htmlcv" inside Report in html format is created 
+```
+pytest --cov=app --cov-report=html
+```
+
+#### To run these Backend Application up and Running we use Linux service
 ```
 which gunicorn
 sudo cp -r  ~/.local/bin/gunicorn /usr/local/bin/
 ```
-Our application run with JIRA user so give proper permissions
+#### Our application run with JIRA user so give proper permissions
 ```
 sudo chown -R jira:jira /app/Digistack-JIRA-App/backend
 ```
