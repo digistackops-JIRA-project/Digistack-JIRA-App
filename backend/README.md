@@ -116,21 +116,22 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
-#### Install the "gunicorn" for running HA
-Verify FastAPI and Gunicorn are installed in the venv:
-
 it show be # should be "/app/Digistack-JIRA-App/backend/venv/bin/python"
 ```
 which python
 ```
+#### Install the "gunicorn" for running HA
+```
+pip install gunicorn
+```
+Verify FastAPI and Gunicorn are installed in the venv:
+
 Check you have "gunicorn"
 ```
 pip list | grep fastapi
 pip list | grep gunicorn
 ```
-```
-pip install gunicorn
-```
+
 #### Run the Test cases
 ```
 pytest tests/ -v
@@ -142,11 +143,6 @@ it will create the folder "htmlcv" inside Report in html format is created
 pytest --cov=app --cov-report=html
 ```
 
-#### To run these Backend Application up and Running we use Linux service
-```
-which gunicorn
-sudo cp -r  ~/.local/bin/gunicorn /usr/local/bin/gunicorn
-```
 #### Our application run with JIRA user so give proper permissions
 ```
 sudo chown -R jira:jira /app/Digistack-JIRA-App/backend
