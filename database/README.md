@@ -1,4 +1,4 @@
-# Database Setup
+# Step:1 ==> Database Setup
 Create "t2.micro" EC2 Instance and open port "3306" for DB 
 
 ## Install MYSQL DB
@@ -59,12 +59,12 @@ FLUSH PRIVILEGES;
 ```
 
 
-# DB Migration 
+# Step:2 ==> Database Migration 
 
 
 
 
-# Check data saved in DB or Not
+# Step:3 ==> Check data saved in DB or Not
 
 Login to your MYSQL
 ```
