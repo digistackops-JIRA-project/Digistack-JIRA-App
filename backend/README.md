@@ -106,12 +106,28 @@ flyway -configFiles=flyway.conf migrate
 cd /app/Digistack-JIRA-App/backend
 sudo chown -R ${USER}:${USER} /app/Digistack-JIRA-App
 ````
+#### Make sure you have a virtual environment
+```
+python3 -m venv venv
+source venv/bin/activate
+```
 #### Install Dependencies
 ```
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 #### Install the "gunicorn" for running HA
+Verify FastAPI and Gunicorn are installed in the venv:
+
+it show be # should be "/app/Digistack-JIRA-App/backend/venv/bin/python"
+```
+which python
+```
+Check you have "gunicorn"
+```
+pip list | grep fastapi
+pip list | grep gunicorn
+```
 ```
 pip install gunicorn
 ```
@@ -140,34 +156,18 @@ create the "admin Backend" service
 sudo vim /etc/systemd/system/adminbackend.service
 ```
 ```
-[Unit]
-Description=Gunicorn Flask App
-After=network.target
-
 [Service]
 User=jira
 Group=jira
-
-# Application directory
 WorkingDirectory=/app/Digistack-JIRA-App/backend
-
-# Start Gunicorn
-ExecStart=/usr/local/bin/gunicorn \
+ExecStart=/app/Digistack-JIRA-App/backend/venv/bin/gunicorn \
+          -k uvicorn.workers.UvicornWorker \
           --workers 3 \
           --bind 0.0.0.0:8000 \
-          --timeout 120 \
-          app:app
-
-# Restart policy
+          --timeout 120 app.main:app
 Restart=always
 RestartSec=5
-
-# Security (recommended)
-NoNewPrivileges=true
-PrivateTmp=true
-
-[Install]
-WantedBy=multi-user.target
+Environment="PATH=/app/Digistack-JIRA-App/backend/venv/bin:$PATH"
 ```
 Enable backend service
 ```
