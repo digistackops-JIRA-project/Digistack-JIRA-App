@@ -91,6 +91,11 @@ CORS_ORIGINS=http://<Public-Browser-IP>:5173
 ```
 
 #### Run the flyway migration command
+HERE we pass DB details in .env, flyway doesnt fetch those values from .env by default, so we need to Load the DB details
+##### Load .env variables
+```
+export $(grep -v '^#' .env | xargs)
+```
 ```
 flyway -configFiles=flyway.conf migrate
 ```
