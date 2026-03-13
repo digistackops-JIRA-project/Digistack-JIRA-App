@@ -95,10 +95,14 @@ CORS_ORIGINS=http://<Public-Browser-IP>:5173
 flyway -configFiles=flyway.conf migrate
 ```
 
-
-
+# Step:5 ==> Download the Dependencies
+Go to the Backen directory 
+```
+cd /app/Digistack-JIRA-App/backend
+````
 Install Dependencies
 ```
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 Start Backend Application
@@ -110,9 +114,13 @@ To run these Backend Application up and Running we use Linux service
 which gunicorn
 sudo cp -r  ~/.local/bin/gunicorn /usr/local/bin/
 ```
-
+Our application run with JIRA user so give proper permissions
 ```
-sudo vim /etc/systemd/system/backend.service
+sudo chown -R jira:jira /app/Digistack-JIRA-App/backend
+```
+create the "admin Backend" service
+```
+sudo vim /etc/systemd/system/adminbackend.service
 ```
 ```
 [Unit]
@@ -120,11 +128,26 @@ Description=Gunicorn Flask App
 After=network.target
 
 [Service]
-User=ec2-user
-Group=ec2-user
-WorkingDirectory=/home/ec2-user/Python-3-tier-UMS-Local/backend
-ExecStart=/usr/local/bin/gunicorn --bind 0.0.0.0:5000 app:app
+User=jira
+Group=jira
+
+# Application directory
+WorkingDirectory=/app/Digistack-JIRA-App/backend
+
+# Start Gunicorn
+ExecStart=/usr/local/bin/gunicorn \
+          --workers 3 \
+          --bind 0.0.0.0:8000 \
+          --timeout 120 \
+          app:app
+
+# Restart policy
 Restart=always
+RestartSec=5
+
+# Security (recommended)
+NoNewPrivileges=true
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
@@ -132,7 +155,7 @@ WantedBy=multi-user.target
 Enable backend service
 ```
 sudo systemctl daemon-reload
-sudo systemctl enable backend
-sudo systemctl start backend
-sudo systemctl status backend
+sudo systemctl enable adminbackend
+sudo systemctl start adminbackend
+sudo systemctl status adminbackend
 ```
