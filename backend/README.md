@@ -104,6 +104,7 @@ flyway -configFiles=flyway.conf migrate
 #### Go to the Backen directory 
 ```
 cd /app/Digistack-JIRA-App/backend
+sudo chown -R ${USER}:${USER} /app/Digistack-JIRA-App
 ````
 #### Install Dependencies
 ```
