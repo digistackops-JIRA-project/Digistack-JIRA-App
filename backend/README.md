@@ -129,7 +129,7 @@ pytest --cov=app --cov-report=html
 #### To run these Backend Application up and Running we use Linux service
 ```
 which gunicorn
-sudo cp -r  ~/.local/bin/gunicorn /usr/local/bin/
+sudo cp -r  ~/.local/bin/gunicorn /usr/local/bin/gunicorn
 ```
 #### Our application run with JIRA user so give proper permissions
 ```
