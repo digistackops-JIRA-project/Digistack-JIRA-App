@@ -61,8 +61,22 @@ FLUSH PRIVILEGES;
 
 # Step:2 ==> Database Migration 
 
+### Create the Database 'admindb' using init.sql
+Step:1 ==> install "MYSQL-Client" for communicate with MYSQL Database
+```
+sudo yum update -y
+sudo wget https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+sudo dnf install mysql80-community-release-el9-1.noarch.rpm -y
+sudo rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2023
+sudo dnf install mysql-community-client -y
+```
+Step:2 ==> Execute your "init.sql" script for your Application DB setup
 
+```
+mysql -h <DB-Prvate-IP> -udbadmin -pAdmin@123 < initdb.sql
+```
 
+### RUN the flyway Migration
 
 # Step:3 ==> Check data saved in DB or Not
 
