@@ -61,6 +61,22 @@ FLUSH PRIVILEGES;
 
 # Step:2 ==> Database Migration 
 
+## Get the DB Code
+```
+mkdir /app
+git clone https://github.com/digistackops-JIRA-project/Digistack-JIRA-App.git
+cd Digistack-JIRA-App
+```
+### switch to PROD Branch
+
+```
+sudo git checkout 02-Local-setup-Prod
+```
+Go to that DB Directory
+```
+cd  /app/Digistack-JIRA-App/database
+```
+
 ### Create the Database 'admindb' using init.sql
 Step:1 ==> install "MYSQL-Client" for communicate with MYSQL Database
 ```
@@ -76,8 +92,21 @@ Step:2 ==> Execute your "init.sql" script for your Application DB setup
 mysql -h <DB-Prvate-IP> -udbadmin -pAdmin@123 < initdb.sql
 ```
 
-### RUN the flyway Migration
+## RUN the flyway Migration
+#### Export DB Credentials as Environment Variables for DB Connection
 
+```
+export DB_HOST="DB_Private_IP"
+export DB_PORT=3306
+export DB_NAME="admindb"
+export DB_USER="appuser"
+export DB_PASSWORD="P@55Word"
+```
+
+#### Run the flyway migration command
+```
+flyway -configFiles=flyway.conf migrate
+```
 # Step:3 ==> Check data saved in DB or Not
 
 Login to your MYSQL
@@ -90,7 +119,7 @@ SHOW DATABASES;
 ```
 Switch to your "user" DB
 ```
-USE employeedb;
+USE admindb;
 ```
 
 See the Tables under "user" DB
@@ -99,5 +128,8 @@ SHOW TABLES;
 ```
 To see Data stored under "user" DB or Not
 ```
-SELECT * FROM user;
+SELECT * FROM admins;
+SELECT * FROM teams;
+SELECT * FROM managers;
+SELECT * FROM employees;
 ```
