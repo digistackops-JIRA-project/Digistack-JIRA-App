@@ -4,9 +4,8 @@
 #### Install Node.js
 ```
 sudo yum install git -y
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
-. ~/.nvm/nvm.sh
-nvm install 16
+curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+sudo yum install nodejs -y
 ```
 #### Install Nginx
 
@@ -64,7 +63,7 @@ Note ==> we already setup the Reverse Proxy using Nginx alredy setup "nginx.conf
 
 ```
 cd frontend
-sudo mv /app/Digistack-JIRA-App/frontend/emart.conf /etc/nginx/conf.d
+sudo mv /app/Digistack-JIRA-App/frontend/jira.conf /etc/nginx/conf.d
 ```
 Edit your the Backend IP Address in nginx.conf
 ```
