@@ -1,4 +1,4 @@
-# Frontend-react Web server
+# Frontend-Vue Web server
 ## Launch EC2 "t2.micro" Instance and In Sg, Open port "80" for nginx '3000' for react Application
 # Step:1 ==> Install the Required packages
 #### Install Node.js
