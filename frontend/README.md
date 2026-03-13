@@ -89,7 +89,11 @@ Download the dependencies
 npm install
 ```
 # Step:5 ==> Build the Package
-Run the Test cases
+Run the Unit trest CAse
+```
+npm run test:unit
+```
+Run all the Test cases
 ```
 npm test -- --watchAll=false
 ```
